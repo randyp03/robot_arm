@@ -1,16 +1,16 @@
-import cv2
-import numpy as np
+import csv
 import math
+import numpy as np
+import time
 from bisect import bisect
 
-import chess
-import chess.engine
-import time
+import cv2
+from picamera2 import Picamera2, Preview
 
-import os # only for demo
+picam2 = Picamera2()
 
-stockfish_path = ".venv/Stockfish/src/stockfish"
-engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
+camera_config = picam2.create_preview_configuration()#main={"size": (3280, 2464)})
+picam2.configure(camera_config)
 
 # Setting chessboard grid dimension
 grid_dimension = (8,2)
@@ -131,47 +131,18 @@ def print_board(board):
 
 # TODO: Create the color ranges for each chess piece
 
-demo_moves = [
-    "e2e4",
-    "e7e5",
-    "g1f3",
-    "d7d6",
-    "d2d4",
-    "c8g4",
-    "d4e5",
-    "g4f3",
-    "d1f3",
-    "d6e5",
-    "f1c4",
-    "g8f6",
-    "f3b3",
-    "d8e7",
-    "b1c3",
-    "c7c6",
-    "c1g5",
-    "b7b5",
-    "c3b5",
-    "c6b5",
-    "c4b5",
-    "b8d7",
-    "e1c1",
-    "a8d8",
-    "d1d7",
-    "d8d7",
-    "h1d1",
-    "e7e6",
-    "b5d7",
-    "f6d7",
-    "b3b8",
-    "d7b8",
-    "d1d8"
-]
+while True:
+    picam2.start_preview(Preview.QTGL)
+    picam2.start()
+    time.sleep(2)
 
-images = sorted(os.listdir("./images/chess_game_sequence/eight_colors"))
-for move, image in zip(demo_moves + ["Checkmate!"], [images[33]] + images[15:33] + images[:15]):
-    # load the image
-    image = cv2.imread(f"./images/chess_game_sequence/eight_colors/{image}")
-    # break the loop if no image is found or loaded
+    user_input = input("Press Enter to take source picture (\'q\' to quit): ")
+    if user_input == 'q':
+        break
+
+    image = picam2.capture_array()#[:, :, :3]
+    print(image)
+    # break the loop if no image is taken
     if image is None:
         print("Error: Image not found or could not be loaded")
         break
@@ -179,24 +150,25 @@ for move, image in zip(demo_moves + ["Checkmate!"], [images[33]] + images[15:33]
     # convert the image to HSV
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     # isolate the pixels based on the lower and upper bounds
-    mask_green = cv2.inRange(hsv, color_threshold_lower, color_threshold_upper)
-    # Green pixels = True, Not green = False
-    imask_green = mask_green>0
+    mask_sat = cv2.inRange(hsv, color_threshold_lower, color_threshold_upper)
+    # Colored pixels = True, Gray pixels = False
+    imask_sat = mask_sat > 0
     # Create new image setting everything that is not green white
-    green = np.full(image.shape, (255, 255, 255), dtype=np.uint8)
-    # Setting everything green to black
-    green[imask_green] = (0,0,0)
+    colors = np.full(image.shape, (255, 255, 255, 255), dtype=np.uint8)
+    # Setting every color to black
+    colors[imask_sat] = (0,0,0,255)
 
     # blur the images, used for live image capture
-    blurred = cv2.GaussianBlur(green, (9,9), 2)
+    blurred = cv2.GaussianBlur(colors, (9,9), 2)
 
-    cv2.imshow('Detected Circles', green)
-    
+    cv2.imshow('Detected Circles', colors)
+    cv2.waitKey(0)
+
     # display images
     # cv2.imshow('image.jpg', image)
     # cv2.imshow('green.jpg', green)
     # cv2.imshow('blurred.jpg', blurred)
-    
+
     '''
     # detect grid pattern
     ret, corners = cv2.findCirclesGrid(
@@ -207,6 +179,7 @@ for move, image in zip(demo_moves + ["Checkmate!"], [images[33]] + images[15:33]
     
     print(ret, corners)
     '''
+
     gray = cv2.cvtColor(green, cv2.COLOR_BGR2GRAY)
     
     circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, 20, param1=20, param2=10, minRadius=15, maxRadius=30)
@@ -232,7 +205,6 @@ for move, image in zip(demo_moves + ["Checkmate!"], [images[33]] + images[15:33]
         # cv2.destroyAllWindows()
 
     print_board(chess_grid)
-    print(f"Engine's move: {move}")
 
     cv2.namedWindow('Detected Circles:', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('Detected Circles:', 640, 480)
@@ -240,5 +212,3 @@ for move, image in zip(demo_moves + ["Checkmate!"], [images[33]] + images[15:33]
     cv2.imshow('Detected Circles:', green)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-
-cv2.destroyAllWindows()
