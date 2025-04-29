@@ -3,9 +3,14 @@ import math
 import numpy as np
 import time
 from bisect import bisect
+import os
 
-import cv2
 from picamera2 import Picamera2, Preview
+
+#os.environ["QT_DEBUG_PLUGINS"] = "1"
+os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = "/home/raspberrypi/Documents/robot_arm/venv/lib/python3.11/site-packages/cv2/qt/plugins/platforms"
+
+import cv2  # Only after setting the environment variable
 
 picam2 = Picamera2()
 
@@ -130,15 +135,15 @@ def print_board(board):
     print()
 
 # TODO: Create the color ranges for each chess piece
+picam2.start_preview(Preview.DRM)
+picam2.start()
 
 while True:
-    picam2.start_preview(Preview.QTGL)
-    picam2.start()
-    time.sleep(2)
-
     user_input = input("Press Enter to take source picture (\'q\' to quit): ")
     if user_input == 'q':
         break
+    
+    time.sleep(2)
 
     image = picam2.capture_array()#[:, :, :3]
     print(image)
