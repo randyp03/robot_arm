@@ -9,7 +9,7 @@ import time
 
 import os # only for demo
 
-stockfish_path = ".venv/Stockfish/src/stockfish"
+stockfish_path = "./stockfish/src/stockfish"
 engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
 
 # Setting chessboard grid dimension
@@ -122,7 +122,7 @@ def print_board(board):
                 print(piece_icon[square], end=' ')
             else:
                 #print(u'■' if i % 2 == j % 2 else u'□', end=' ')
-                print(' ', end='')
+                print('  ', end='')
             print('\033[0m', end='')
         print()
     print('  a b c d e f g h')

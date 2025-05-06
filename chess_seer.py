@@ -14,18 +14,17 @@ import cv2  # Only after setting the environment variable
 
 picam2 = Picamera2()
 
-camera_config = picam2.create_preview_configuration()#main={"size": (3280, 2464)})
+#picam2.preview_size = (3280, 2464)
+
+camera_config = picam2.create_preview_configuration() #main={"size": (3280, 2464)})
 picam2.configure(camera_config)
 
 # Setting chessboard grid dimension
 grid_dimension = (8,2)
-# Setting HSV lower and upper bound ranges
-lower_green = (25, 50, 90)
-higher_green = (80, 255, 255)
 
 # Experiment with thresholds once we have real pictures
 # Saturation of lower bound might need to be increased
-color_threshold_lower = (0, 10, 0)
+color_threshold_lower = (0, 100, 0)
 color_threshold_upper= (255, 255, 255)
 
 black = (0, 0, 0)
@@ -135,17 +134,21 @@ def print_board(board):
     print()
 
 # TODO: Create the color ranges for each chess piece
-picam2.start_preview(Preview.DRM)
-picam2.start()
+
 
 while True:
+    picam2.start_preview(Preview.DRM)
+    picam2.start()
+    time.sleep(2)
     user_input = input("Press Enter to take source picture (\'q\' to quit): ")
     if user_input == 'q':
+        picam2.close()
         break
-    
-    time.sleep(2)
-
     image = picam2.capture_array()#[:, :, :3]
+    cv2.imshow('Original Image', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    picam2.close()
     print(image)
     # break the loop if no image is taken
     if image is None:
@@ -165,10 +168,7 @@ while True:
 
     # blur the images, used for live image capture
     blurred = cv2.GaussianBlur(colors, (9,9), 2)
-
-    cv2.imshow('Detected Circles', colors)
-    cv2.waitKey(0)
-
+    
     # display images
     # cv2.imshow('image.jpg', image)
     # cv2.imshow('green.jpg', green)
@@ -184,10 +184,9 @@ while True:
     
     print(ret, corners)
     '''
-
-    gray = cv2.cvtColor(green, cv2.COLOR_BGR2GRAY)
+    print(blurred)
     
-    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, 20, param1=20, param2=10, minRadius=15, maxRadius=30)
+    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, 1, 20, param1=20, param2=10, minRadius=100, maxRadius=200)
     
     #print(circles)
 
@@ -205,15 +204,15 @@ while True:
         for c in cols:
             cv2.line(green, (c, 0), (c, 400), (0, 0, 255), 5)
         
-        # cv2.imshow('Detected Circles', green)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
+        cv2.imshow('Detected Circles', colors)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     print_board(chess_grid)
 
     cv2.namedWindow('Detected Circles:', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('Detected Circles:', 640, 480)
     cv2.moveWindow('Detected Circles:', 1000, 1200)
-    cv2.imshow('Detected Circles:', green)
+    cv2.imshow('Detected Circles:', colors)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
