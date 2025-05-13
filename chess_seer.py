@@ -16,7 +16,7 @@ picam2 = Picamera2()
 
 #picam2.preview_size = (3280, 2464)
 
-camera_config = picam2.create_preview_configuration() #main={"size": (3280, 2464)})
+camera_config = picam2.create_preview_configuration()#main={"size": (1640, 1232)})
 picam2.configure(camera_config)
 
 # Setting chessboard grid dimension
@@ -36,8 +36,8 @@ pink = (255, 102, 196)
 orange = (255, 145, 77)
 yellow = (255, 222, 89)
 
-rows = [60, 120, 180, 240, 300, 360, 420, 480]
-cols = [140, 200, 260, 320, 380, 440, 500, 560]
+rows = [1232 // 8 * i for i in range(8)]
+cols = [1640 // 8 * i for i in range(8)]
 
 def get_hue(rgb_color):
     rgb_array = np.uint8([[list(rgb_color)]])
@@ -71,7 +71,10 @@ piece_icon = {
 
 def get_piece(image, circle):
     x, y, r = (int(a) for a in circle)
-    piece_type_color = image[y+r-2][x]
+    if y < image.shape[0] // 2:
+        piece_type_color = image[y+r-2][x]
+    else:
+        piece_type_color = image[y-r+2][x]
     #print(y+r-3, x)
     #print(piece_type_color)
     piece_type_hue = piece_type_color[0]
@@ -90,7 +93,7 @@ def get_piece(image, circle):
 
 def piece_coordinate(circle):
     x, y, r = (int(a) for a in circle)
-    return (bisect(rows, y), bisect(cols, x))
+    return (min(7, bisect(rows, y)), min(7, bisect(cols, x)))
 
 def generate_fen(chess_grid):
     res = []
@@ -126,7 +129,7 @@ def print_board(board):
                 print(piece_icon[square], end=' ')
             else:
                 #print(u'■' if i % 2 == j % 2 else u'□', end=' ')
-                print(' ', end='')
+                print('  ', end='')
             print('\033[0m', end='')
         print()
     print('  a b c d e f g h')
@@ -162,9 +165,9 @@ while True:
     # Colored pixels = True, Gray pixels = False
     imask_sat = mask_sat > 0
     # Create new image setting everything that is not green white
-    colors = np.full(image.shape, (255, 255, 255, 255), dtype=np.uint8)
+    colors = np.full(image.shape[:2], 255, dtype=np.uint8)
     # Setting every color to black
-    colors[imask_sat] = (0,0,0,255)
+    colors[imask_sat] = 0
 
     # blur the images, used for live image capture
     blurred = cv2.GaussianBlur(colors, (9,9), 2)
@@ -184,9 +187,8 @@ while True:
     
     print(ret, corners)
     '''
-    print(blurred)
     
-    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, 1, 20, param1=20, param2=10, minRadius=100, maxRadius=200)
+    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, 1, 20, param1=20, param2=10, minRadius=20, maxRadius=30)
     
     #print(circles)
 
@@ -198,21 +200,12 @@ while True:
         for i in circles:
             piece = get_piece(hsv, i)
             chess_grid[piece_coordinate(i)] = piece
-            cv2.circle(green, (i[0], i[1]), i[2], (0, 255, 0), 2)
-        for r in rows:
-            cv2.line(green, (80, r), (500, r), (0, 0, 255), 5)
-        for c in cols:
-            cv2.line(green, (c, 0), (c, 400), (0, 0, 255), 5)
+            cv2.circle(hsv, (i[0], i[1]), i[2], (0, 255, 255), 2)
         
-        cv2.imshow('Detected Circles', colors)
+        cv2.imshow('Detected Circles', hsv)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
     print_board(chess_grid)
-
-    cv2.namedWindow('Detected Circles:', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('Detected Circles:', 640, 480)
-    cv2.moveWindow('Detected Circles:', 1000, 1200)
-    cv2.imshow('Detected Circles:', colors)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
